@@ -1,20 +1,31 @@
-# Use an official Python runtime as a base image
-FROM python
+# Use an official Python runtime as the base image
+FROM python:3.9-slim
+
+# Set the working directory in the container
+WORKDIR /app
 
 # Copy the requirements file into the container
 COPY requirements.txt .
 
-# Install any needed packages specified in requirements.txt
-RUN pip install -r requirements.txt
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code into the container
 COPY . .
 
-# Set environment variables if needed (example)
-# ENV SOME_ENV_VAR=value
+# Expose the ports for the chatbot and training script
+EXPOSE 8000 
 
-# Expose port 8000 (or the port your application uses)
-EXPOSE 8000
+# Create a startup script
+RUN echo '#!/bin/bash\n\
+python chatbot_training.py &\n\
+python chat.py\n\
+' > /app/start.sh && chmod +x /app/start.sh
 
-# Define the command to run your application
-CMD ["python", "chatbot_training.py"]
+# Set the startup script as the entry point
+ENTRYPOINT ["/app/start.sh"]
